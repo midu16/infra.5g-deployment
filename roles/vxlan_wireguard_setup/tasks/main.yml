@@ -1,0 +1,33 @@
+---
+# tasks file for roles/vxlan_wireguard_setup
+- name: Install required packages
+  become: true
+  dnf:
+    name:
+      - epel-release
+      - elrepo-release
+      - kmod-wireguard
+      - wireguard-tools
+      - bridge-utils
+    state: present
+
+- name: Load Wireguard kernel module
+  become: true
+  modprobe:
+    name: wireguard
+
+- name: Enable IPv4 forwarding
+  become: true
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: 1
+    state: present
+    reload: true
+
+## Configuring the Wireguard 
+- name: Include Wireguard setup tasks
+  include_tasks: wireguard_setup.yml
+
+- name: Include VXLAN setup tasks
+  include_tasks: vxlan_setup.yml
+

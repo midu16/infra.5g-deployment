@@ -1,0 +1,5 @@
+---
+- hosts: hypervisors
+  become: true
+  roles:
+    - vxlan_wireguard_setup

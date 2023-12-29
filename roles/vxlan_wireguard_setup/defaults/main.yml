@@ -1,0 +1,9 @@
+---
+# defaults file for roles/vxlan_wireguard_setup
+hypervisor_ext_nic: eth0
+
+# Those variables are created as part of the /tasks/wireguard_setup.yml
+# wireguard_private_key: "your_private_key_here"
+# peer_public_key: "your_peer_public_key_here"
+peer_endpoint: "peer_endpoint_ip_here"
+

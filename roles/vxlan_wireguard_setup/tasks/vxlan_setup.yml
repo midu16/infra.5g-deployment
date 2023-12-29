@@ -1,0 +1,36 @@
+---
+- name: Create bridge interface
+  become: true
+  nmcli:
+    cmd: add
+    type: bridge
+    ifname: br0
+    con-name: br0
+    stp: no
+    ipv4.addresses: 172.16.30.{{ inventory_hostname[-1] }}/24
+    ipv4.method: manual
+
+- name: Create VXLAN interface
+  become: true
+  nmcli:
+    cmd: add
+    type: vxlan
+    ifname: to-node{{ 3 - inventory_hostname[-1] }}
+    con-name: to-node{{ 3 - inventory_hostname[-1] }}
+    remote: 172.16.0.{{ 3 - inventory_hostname[-1] }}
+    id: 1
+    destination-port: 4789
+    ipv4.method: disabled
+
+- name: Add VXLAN interface to bridge
+  become: true
+  nmcli:
+    cmd: modify
+    con-name: to-node{{ 3 - inventory_hostname[-1] }}
+    master: br0
+
+- name: Bring up the bridge interface
+  become: true
+  nmcli:
+    cmd: up
+    con-name: br0

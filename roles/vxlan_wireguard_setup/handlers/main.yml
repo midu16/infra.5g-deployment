@@ -1,0 +1,9 @@
+---
+# handlers file for roles/vxlan_wireguard_setup
+- name: Restart Wireguard Service
+  become: true
+  systemd:
+    name: wg-quick@wg0.service
+    state: restarted
+    enabled: yes
+

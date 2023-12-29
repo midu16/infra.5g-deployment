@@ -1,0 +1,45 @@
+---
+- name: Generate Wireguard keys
+  become: true
+  shell: |
+    mkdir -p /etc/wireguard/certs/
+    chmod 600 /etc/wireguard/certs/private_key
+    chmod 644 /etc/wireguard/certs/public_key
+  args:
+    executable: /bin/bash
+
+- name: Generate Wireguard private keys
+  become: true
+  shell: |
+    private_key=$(wg genkey)
+    echo "$private_key" > /etc/wireguard/certs/private_key
+    echo "$private_key"
+  args:
+    executable: /bin/bash
+  register: private_key_output
+
+- name: Generate Wireguard public keys
+  become: true
+  shell: |
+    public_key=$(wg pubkey < /etc/wireguard/certs/private_key)
+    echo "$public_key" > /etc/wireguard/certs/public_key
+    echo "$public_key"
+  args:
+    executable: /bin/bash
+  register: public_key_output
+
+- name: Save private key to Ansible variable
+  set_fact:
+    wireguard_private_key: "{{ private_key_output.stdout_lines[0] | default('') }}"
+
+- name: Save public key to Ansible variable
+  set_fact:
+    peer_public_key: "{{ public_key_output.stdout_lines[0] | default('') }}"
+
+- name: Configure Wireguard Tunnel (wg0)
+  become: true
+  template:
+    src: wireguard_config.j2
+    dest: /etc/wireguard/wg0.conf
+  notify:
+    - Restart Wireguard Service

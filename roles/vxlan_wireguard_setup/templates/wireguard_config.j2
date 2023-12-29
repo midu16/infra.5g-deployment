@@ -1,0 +1,11 @@
+[Interface]
+PrivateKey = {{ wireguard_private_key }}
+Address = 172.16.0.{{ inventory_hostname[-1] }}/16
+ListenPort = 51820
+PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o {{ hypervisor_ext_nic }} -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o {{ hypervisor_ext_nic }} -j MASQUERADE
+
+[Peer]
+PublicKey = {{ peer_public_key }}
+Endpoint = {{ peer_endpoint }}
+AllowedIPs = 172.16.0.0/16
