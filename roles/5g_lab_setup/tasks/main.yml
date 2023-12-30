@@ -1,0 +1,99 @@
+---
+- name: Enable kcli COPR repository
+  dnf:
+    name: "karmab/kcli"
+    state: present
+  become: true
+
+- name: Install required packages
+  dnf:
+    name: "{{ item }}"
+    state: present
+  become: true
+  loop:
+    - kcli
+    - bash-completion
+    - vim
+    - jq
+    - tar
+    - git
+    - ipcalc
+    - python3-pyOpenSSL
+
+- name: Download oc and kubectl
+  command: "kcli download {{ item.name }} -P version=stable -P tag='4.13'"
+  become: true
+  loop:
+    - name: oc
+    - name: kubectl
+
+- name: Move oc and kubectl to /usr/bin/
+  copy:
+    remote_src: True
+    src: "{{ item }}"
+    dest: "/usr/bin/" 
+  become: true
+  loop:
+    - oc
+    - kubectl
+
+- name: Create network using kcli
+  command: "kcli create network -c 192.168.125.0/24 --nodhcp --domain 5g-deployment.lab 5gdeploymentlab"
+  become: true
+
+- name: Install dnsmasq and policycoreutils
+  dnf:
+    name: "{{ item }}"
+    state: present
+  become: true
+  loop:
+    - dnsmasq
+    - policycoreutils-python-utils
+
+- name: Configure dnsmasq
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  become: true
+  loop:
+    - { src: "files/dnsmasq.conf", dest: "/opt/dnsmasq/dnsmasq.conf" }
+    - { src: "files/upstream-resolv.conf", dest: "/opt/dnsmasq/upstream-resolv.conf" }
+    - { src: "files/hub.ipv4", dest: "/opt/dnsmasq/include.d/hub.ipv4" }
+    - { src: "files/sno1.ipv4", dest: "/opt/dnsmasq/include.d/sno1.ipv4" }
+    - { src: "files/sno2.ipv4", dest: "/opt/dnsmasq/include.d/sno2.ipv4" }
+    - { src: "files/infrastructure-host.ipv4", dest: "/opt/dnsmasq/include.d/infrastructure-host.ipv4" }
+    - { src: "files/dnsmasq-virt.service", dest: "/etc/systemd/system/dnsmasq-virt.service" }
+
+- name: Create hosts.leases file
+  command: "touch /opt/dnsmasq/hosts.leases"
+  become: true
+
+- name: Set SELinux context for hosts.leases
+  command: "semanage fcontext -a -t dnsmasq_lease_t /opt/dnsmasq/hosts.leases"
+  become: true
+
+- name: Restore SELinux context for hosts.leases
+  command: "restorecon /opt/dnsmasq/hosts.leases"
+  become: true
+
+- name: Update upstream DNS in upstream-resolv.conf
+  replace:
+    path: "/opt/dnsmasq/upstream-resolv.conf"
+    regexp: "UPSTREAM_DNS"
+    replace: "1.1.1.1"
+  become: true
+
+- name: Reload systemd
+  command: "systemctl daemon-reload"
+  become: true
+
+- name: Enable and start dnsmasq-virt service
+  systemd:
+    name: dnsmasq-virt
+    enabled: yes
+    state: started
+  become: true
+
+- name: Mask dnsmasq service
+  command: "systemctl mask dnsmasq"
+  become: true
