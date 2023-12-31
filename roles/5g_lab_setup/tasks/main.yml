@@ -24,22 +24,41 @@
     - dnsmasq
     - policycoreutils-python-utils
 
-- name: Download oc and kubectl
-  command: "kcli download {{ item.name }} -P version=stable -P tag='4.13'"
+- name: Create temporary directory for download
+  file:
+    path: "/tmp/openshift-client"
+    state: directory
   become: true
-  loop:
-    - name: oc
-    - name: kubectl
+  
+- name: Download OpenShift Client archive
+  get_url:
+    url: "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/{{ocp_version}}/openshift-client-linux-{{ocp_version}}.tar.gz"
+    dest: "/tmp/openshift-client/openshift-client-linux-{{ocp_version}}.tar.gz"
+  become: true
+  
+- name: Extract OpenShift Client archive
+  unarchive:
+    src: "/tmp/openshift-client/openshift-client-linux-{{ocp_version}}.tar.gz"
+    dest: "/tmp/openshift-client"
+    remote_src: true
+  become: true
 
-- name: Move oc and kubectl to /usr/bin/
+- name: Copy OpenShift Client binary to /usr/local/bin
   copy:
-    remote_src: True
-    src: "{{ item }}"
-    dest: "/usr/bin/" 
+    src: "/tmp/openshift-client/{{ item }}"
+    dest: "/usr/bin/"
+    mode: "0755"
   become: true
   loop:
     - oc
     - kubectl
+
+- name: Clean up temporary directory
+  file:
+    path: "/tmp/openshift-client"
+    state: absent
+  become: true
+
 
 #- name: Create network using kcli
 #  command: "kcli create network -c 192.168.125.0/24 --nodhcp --domain 5g-deployment.lab 5gdeploymentlab"
@@ -70,18 +89,26 @@
     - { src: "files/infrastructure-host.ipv4", dest: "/opt/dnsmasq/include.d/infrastructure-host.ipv4" }
     - { src: "files/dnsmasq-virt.service", dest: "/etc/systemd/system/dnsmasq-virt.service" }
 
-- name: Create hosts.leases file
-  command: "touch /opt/dnsmasq/hosts.leases"
-  become: true
-
+- name: Create and manage hosts.leases file
+  file:
+    path: /opt/dnsmasq/hosts.leases
+    state: touch
+  become: yes
+  
 - name: Set SELinux context for hosts.leases
-  command: "semanage fcontext -a -t dnsmasq_lease_t /opt/dnsmasq/hosts.leases"
-  become: true
+  sefcontext:
+    target: /opt/dnsmasq/hosts.leases
+    setype: dnsmasq_lease_t
+    state: present
+  become: yes
 
 - name: Restore SELinux context for hosts.leases
-  command: "restorecon /opt/dnsmasq/hosts.leases"
-  become: true
-
+  sefcontext:
+    target: /opt/dnsmasq/hosts.leases
+    setype: system_u:object_r:dnsmasq_lease_t:s0
+    state: restorecon
+  become: yes
+  
 - name: Update upstream DNS in upstream-resolv.conf
   replace:
     path: "/opt/dnsmasq/upstream-resolv.conf"
