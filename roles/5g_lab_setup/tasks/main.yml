@@ -1,10 +1,12 @@
 ---
+# Enable Karmab maister repo
 - name: Enable kcli COPR repository
   dnf:
     name: "karmab/kcli"
     state: present
   become: true
 
+# Install dnf packages
 - name: Install required packages
   dnf:
     name: "{{ item }}"
@@ -19,6 +21,8 @@
     - git
     - ipcalc
     - python3-pyOpenSSL
+    - dnsmasq
+    - policycoreutils-python-utils
 
 - name: Download oc and kubectl
   command: "kcli download {{ item.name }} -P version=stable -P tag='4.13'"
@@ -37,18 +41,20 @@
     - oc
     - kubectl
 
-- name: Create network using kcli
-  command: "kcli create network -c 192.168.125.0/24 --nodhcp --domain 5g-deployment.lab 5gdeploymentlab"
-  become: true
+#- name: Create network using kcli
+#  command: "kcli create network -c 192.168.125.0/24 --nodhcp --domain 5g-deployment.lab 5gdeploymentlab"
+#  become: true
 
-- name: Install dnsmasq and policycoreutils
-  dnf:
-    name: "{{ item }}"
-    state: present
+- name: Create 5G Deployment Network
+  virt_net:
+    state: defined
+    name: 5gdeploymentlab
+    bridge: virbr0  # Adjust the bridge name as per your setup
+    cidr: 192.168.125.0/24
+    dhcp: no
+    domain: 5g-deployment.lab
+  delegate_to: localhost
   become: true
-  loop:
-    - dnsmasq
-    - policycoreutils-python-utils
 
 - name: Configure dnsmasq
   copy:

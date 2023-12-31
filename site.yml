@@ -2,4 +2,5 @@
 - hosts: hypervisors
   become: true
   roles:
+    - 5g_lab_setup
     - vxlan_wireguard_setup
