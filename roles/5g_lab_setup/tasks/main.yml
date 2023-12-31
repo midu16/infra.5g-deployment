@@ -129,3 +129,43 @@
     name: dnsmasq
     masked: yes
   become: true
+  
+- name: Download forcedns script
+  get_url:
+    url: "https://raw.githubusercontent.com/RHsyseng/5g-ran-deployments-on-ocp-lab/lab-4.13/lab-materials/lab-env-data/hypervisor/forcedns"
+    dest: "/etc/NetworkManager/dispatcher.d/forcedns"
+    mode: "0755"
+  become: true
+
+- name: Restart NetworkManager
+  systemd:
+    name: NetworkManager
+    state: restarted
+  become: true
+
+- name: Disable firewalld and iptables services
+  systemd:
+    name: "{{ item }}"
+    enabled: no
+    masked: yes
+  loop:
+    - firewalld
+    - iptables
+  become: true
+
+- name: Stop firewalld and iptables services
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+  loop:
+    - firewalld
+    - iptables
+  become: true
+
+- name: Flush iptables rules
+  command:
+    cmd: iptables -F
+  ignore_errors: true
+  become: true
+
+
