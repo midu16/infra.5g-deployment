@@ -89,17 +89,16 @@
     replace: "1.1.1.1"
   become: true
 
-- name: Reload systemd
-  command: "systemctl daemon-reload"
-  become: true
-
 - name: Enable and start dnsmasq-virt service
   systemd:
     name: dnsmasq-virt
     enabled: yes
+    daemon_reload: yes
     state: started
   become: true
 
 - name: Mask dnsmasq service
-  command: "systemctl mask dnsmasq"
+  systemd:
+    name: dnsmasq
+    masked: yes
   become: true
